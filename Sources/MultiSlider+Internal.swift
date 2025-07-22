@@ -268,24 +268,34 @@ extension MultiSlider {
         position(marker: thumbViews[i], at: value[i])
     }
 
-    private func position(marker: UIView, at value: CGFloat) {
+    func position(marker: UIView, at value: CGFloat) {
         guard let containerView = marker.superview else { return }
-        containerView.removeFirstConstraint { $0.firstItem === marker && $0.firstAttribute == .center(in: orientation) }
-        let minMaxValueDifference = maximumValue - minimumValue
-        let relativeDistanceToMax = minMaxValueDifference.isZero ? 0 : (maximumValue - value) / minMaxValueDifference
+        containerView.removeFirstConstraint {
+            $0.firstItem === marker && $0.firstAttribute == .center(in: orientation)
+        }
+
         if orientation == .horizontal {
-            if relativeDistanceToMax < 1 {
-                containerView.constrain(marker, at: .centerX, to: containerView, at: .right, ratio: CGFloat(1 - relativeDistanceToMax))
-            } else {
-                containerView.constrain(marker, at: .centerX, to: containerView, at: .left)
-            }
-        } else { // vertical orientation
-            if relativeDistanceToMax.isNormal {
-                containerView.constrain(marker, at: .centerY, to: containerView, at: .bottom, ratio: CGFloat(relativeDistanceToMax))
+            var p = progress(for: value).clamped(to: 0...1)   // 0=min, 1=max
+            if isRTLHorizontal { p = 1 - p }                  // flip for Arabic
+            containerView.constrain(marker,
+                                    at: .centerX,
+                                    to: containerView,
+                                    at: .left,
+                                    ratio: p)
+        } else {
+            // original vertical code
+            let relToMax = range == 0 ? 0 : (maximumValue - value) / range
+            if relToMax.isNormal {
+                containerView.constrain(marker,
+                                        at: .centerY,
+                                        to: containerView,
+                                        at: .bottom,
+                                        ratio: relToMax)
             } else {
                 containerView.constrain(marker, at: .centerY, to: containerView, at: .top)
             }
         }
+
         UIView.animate(withDuration: 0.1) {
             containerView.updateConstraintsIfNeeded()
         }

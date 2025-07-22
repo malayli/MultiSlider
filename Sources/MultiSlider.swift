@@ -402,4 +402,51 @@ open class MultiSlider: UIControl {
         thumbCount = 0
         thumbCount = oldThumbCount
     }
+
+    var isRTLHorizontal: Bool {
+        orientation == .horizontal &&
+        (effectiveUserInterfaceLayoutDirection == .rightToLeft)
+    }
+
+    var range: CGFloat { maximumValue - minimumValue }
+
+    func progress(for value: CGFloat) -> CGFloat {
+        guard range > 0 else { return 0 }
+        return (value - minimumValue) / range          // 0 = min, 1 = max
+    }
+
+    private func value(for progress: CGFloat) -> CGFloat {
+        minimumValue + progress * range
+    }
+
+    private func updateDraggedThumbValue(relativeValue: CGFloat) {
+        var p = relativeValue.clamped(to: 0...1)          // 0 = left, 1 = right (view coords)
+        let r = range
+
+        if orientation == .vertical {
+            var newValue = maximumValue - p * r
+            newValue = snap.snap(value: newValue)
+            applyNewDraggedValue(newValue)
+            return
+        }
+
+        // HORIZONTAL
+        if isRTLHorizontal { p = 1 - p }                  // invert for Arabic: min should be on right
+        let newValue = snap.snap(value: value(for: p))
+        applyNewDraggedValue(newValue)
+    }
+
+    private func applyNewDraggedValue(_ newValue: CGFloat) {
+        guard newValue != value[draggedThumbIndex] else { return }
+        isSettingValue = true
+        value[draggedThumbIndex] = newValue
+        isSettingValue = false
+
+        if snap != .never { selectionFeedbackGenerator?.selectionChanged() }
+        if isContinuous { sendActions(for: [.valueChanged, .primaryActionTriggered]) }
+    }
+}
+
+extension Comparable {
+    func clamped(to r: ClosedRange<Self>) -> Self { min(max(self, r.lowerBound), r.upperBound) }
 }
