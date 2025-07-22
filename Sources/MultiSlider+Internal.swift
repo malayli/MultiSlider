@@ -268,22 +268,41 @@ extension MultiSlider {
         position(marker: thumbViews[i], at: value[i])
     }
 
-    func position(marker: UIView, at value: CGFloat) {
+    // MARK: - Position a thumb/snap marker
+    private func position(marker: UIView, at value: CGFloat) {
         guard let containerView = marker.superview else { return }
+
+        // Remove previous center constraint on the relevant axis
         containerView.removeFirstConstraint {
             $0.firstItem === marker && $0.firstAttribute == .center(in: orientation)
         }
 
+        let range = maximumValue - minimumValue
+
         if orientation == .horizontal {
-            var p = progress(for: value).clamped(to: 0...1)   // 0=min, 1=max
-            if isRTLHorizontal { p = 1 - p }                  // flip for Arabic
-            containerView.constrain(marker,
-                                    at: .centerX,
-                                    to: containerView,
-                                    at: .left,
-                                    ratio: p)
+            // progress 0 = min side, 1 = max side (before RTL flip)
+            var p: CGFloat = range > 0 ? (value - minimumValue) / range : 0
+            if isRTLHorizontal { p = 1 - p } // min on right in Arabic
+
+            // Clamp to [0,1]
+            p = max(0, min(1, p))
+
+            // Auto Layout can't use multiplier 0 for a positional attribute.
+            // Special-case the edges, otherwise use a safe (>0) multiplier.
+            if p == 0 {
+                containerView.constrain(marker, at: .centerX, to: containerView, at: .left)
+            } else if p == 1 {
+                containerView.constrain(marker, at: .centerX, to: containerView, at: .right)
+            } else {
+                let safeP = max(0.000001, p)
+                containerView.constrain(marker,
+                                        at: .centerX,
+                                        to: containerView,
+                                        at: .left,
+                                        ratio: safeP)
+            }
         } else {
-            // original vertical code
+            // Vertical: keep existing logic
             let relToMax = range == 0 ? 0 : (maximumValue - value) / range
             if relToMax.isNormal {
                 containerView.constrain(marker,

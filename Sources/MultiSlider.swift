@@ -445,6 +445,11 @@ open class MultiSlider: UIControl {
         if snap != .never { selectionFeedbackGenerator?.selectionChanged() }
         if isContinuous { sendActions(for: [.valueChanged, .primaryActionTriggered]) }
     }
+
+    private func safeRatio(_ r: CGFloat) -> CGFloat {
+        // keep it strictly inside (0, 1] to avoid multiplier 0
+        return r <= 0 ? 0.000001 : r
+    }
 }
 
 extension Comparable {
